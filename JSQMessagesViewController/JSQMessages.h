@@ -32,6 +32,7 @@
 #import "JSQMessagesBubbleSizeCalculating.h"
 #import "JSQMessagesBubblesSizeCalculator.h"
 #import "JSQMessagesCollectionViewFlowLayout.h"
+#import "X509MessagesCollectionViewFlowLayout.h"
 #import "JSQMessagesCollectionViewLayoutAttributes.h"
 #import "JSQMessagesCollectionViewFlowLayoutInvalidationContext.h"
 #import "JSQAudioMediaViewAttributes.h"

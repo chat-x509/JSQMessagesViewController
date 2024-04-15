@@ -213,6 +213,7 @@
 		A04B0EBD1D6ADE5800FBDC47 /* JSQMessagesVideoThumbnailFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSQMessagesVideoThumbnailFactory.h; sourceTree = "<group>"; };
 		A04B0EBE1D6ADE5800FBDC47 /* JSQMessagesVideoThumbnailFactory.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JSQMessagesVideoThumbnailFactory.m; sourceTree = "<group>"; };
 		B6B567482BCDD98F009F6EFA /* X509MessagesCollectionViewFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = X509MessagesCollectionViewFlowLayout.swift; sourceTree = "<group>"; };
+		B6B567492BCDDB81009F6EFA /* X509MessagesCollectionViewFlowLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = X509MessagesCollectionViewFlowLayout.h; sourceTree = "<group>"; };
 		BF10D6A81D062AD10072D215 /* JSQMessagesTypingView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSQMessagesTypingView.h; sourceTree = "<group>"; };
 		BF10D6A91D062AD10072D215 /* JSQMessagesTypingView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JSQMessagesTypingView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -379,6 +380,7 @@
 		88A25F6F19D8E01A00924534 /* Layout */ = {
 			isa = PBXGroup;
 			children = (
+				B6B567492BCDDB81009F6EFA /* X509MessagesCollectionViewFlowLayout.h */,
 				B6B567482BCDD98F009F6EFA /* X509MessagesCollectionViewFlowLayout.swift */,
 				544A321F1CB2EE380084BFC0 /* JSQAudioMediaViewAttributes.h */,
 				544A32201CB2EE380084BFC0 /* JSQAudioMediaViewAttributes.m */,
