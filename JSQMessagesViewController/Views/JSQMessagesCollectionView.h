@@ -19,6 +19,7 @@
 #import <UIKit/UIKit.h>
 
 #import "JSQMessagesCollectionViewFlowLayout.h"
+#import "X509MessagesCollectionViewFlowLayout.h"
 #import "JSQMessagesCollectionViewDelegateFlowLayout.h"
 #import "JSQMessagesCollectionViewDataSource.h"
 #import "JSQMessagesCollectionViewCell.h"

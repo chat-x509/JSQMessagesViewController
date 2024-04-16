@@ -1,21 +1,3 @@
-//
-//  Created by Jesse Squires
-//  http://www.jessesquires.com
-//
-//
-//  Documentation
-//  http://cocoadocs.org/docsets/JSQMessagesViewController
-//
-//
-//  GitHub
-//  https://github.com/jessesquires/JSQMessagesViewController
-//
-//
-//  License
-//  Copyright (c) 2014 Jesse Squires
-//  Released under an MIT license: http://opensource.org/licenses/MIT
-//
-
 #ifndef JSQMessages_JSQMessages_h
 #define JSQMessages_JSQMessages_h
 
@@ -44,16 +26,13 @@
 
 //  Model
 #import "JSQMessage.h"
-
 #import "JSQMediaItem.h"
 #import "JSQAudioMediaItem.h"
 #import "JSQPhotoMediaItem.h"
 #import "JSQLocationMediaItem.h"
 #import "JSQVideoMediaItem.h"
-
 #import "JSQMessagesBubbleImage.h"
 #import "JSQMessagesAvatarImage.h"
-
 #import "JSQAudioMediaViewAttributes.h"
 
 //  Protocols

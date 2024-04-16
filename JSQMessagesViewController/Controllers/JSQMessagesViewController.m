@@ -1,128 +1,28 @@
-//
-//  Created by Jesse Squires
-//  http://www.jessesquires.com
-//
-//
-//  Documentation
-//  http://cocoadocs.org/docsets/JSQMessagesViewController
-//
-//
-//  GitHub
-//  https://github.com/jessesquires/JSQMessagesViewController
-//
-//
-//  License
-//  Copyright (c) 2014 Jesse Squires
-//  Released under an MIT license: http://opensource.org/licenses/MIT
-//
 
 #import "JSQMessagesViewController.h"
-
 #import "JSQMessagesCollectionViewFlowLayoutInvalidationContext.h"
-
 #import "JSQMessageData.h"
 #import "JSQMessageBubbleImageDataSource.h"
 #import "JSQMessageAvatarImageDataSource.h"
-
 #import "JSQMessagesCollectionViewCellIncoming.h"
 #import "JSQMessagesCollectionViewCellOutgoing.h"
-
 #import "JSQMessagesTypingIndicatorFooterView.h"
 #import "JSQMessagesLoadEarlierHeaderView.h"
-
 #import "NSString+JSQMessages.h"
 #import "NSBundle+JSQMessages.h"
 
 #import <objc/runtime.h>
 
-
-// Fixes rdar://26295020
-// See issue #1247 and Peter Steinberger's comment:
-// https://github.com/jessesquires/JSQMessagesViewController/issues/1247#issuecomment-219386199
-// Gist with workaround: https://gist.github.com/steipete/b00fc02aa9f1c66c11d0f996b1ba1265
-// Forgive me
-static IMP JSQReplaceMethodWithBlock(Class c, SEL origSEL, id block) {
-    NSCParameterAssert(block);
-
-    // get original method
-    Method origMethod = class_getInstanceMethod(c, origSEL);
-    NSCParameterAssert(origMethod);
-
-    // convert block to IMP trampoline and replace method implementation
-    IMP newIMP = imp_implementationWithBlock(block);
-
-    // Try adding the method if not yet in the current class
-    if (!class_addMethod(c, origSEL, newIMP, method_getTypeEncoding(origMethod))) {
-        return method_setImplementation(origMethod, newIMP);
-    } else {
-        return method_getImplementation(origMethod);
-    }
-}
-
-static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
-    __block void (^removeWorkaround)(void) = ^{};
-    const void (^installWorkaround)(void) = ^{
-        const SEL presentSEL = @selector(presentViewController:animated:completion:);
-        __block IMP origIMP = JSQReplaceMethodWithBlock(UIViewController.class, presentSEL, ^(UIViewController *self, id vC, BOOL animated, id completion) {
-            UIViewController *targetVC = self;
-            while (targetVC.presentedViewController) {
-                targetVC = targetVC.presentedViewController;
-            }
-            ((void (*)(id, SEL, id, BOOL, id))origIMP)(targetVC, presentSEL, vC, animated, completion);
-        });
-        removeWorkaround = ^{
-            Method origMethod = class_getInstanceMethod(UIViewController.class, presentSEL);
-            NSCParameterAssert(origMethod);
-            class_replaceMethod(UIViewController.class,
-                                presentSEL,
-                                origIMP,
-                                method_getTypeEncoding(origMethod));
-        };
-    };
-
-    const SEL presentSheetSEL = NSSelectorFromString(@"presentSheetFromRect:");
-    const void (^swizzleOnClass)(Class k) = ^(Class klass) {
-        const __block IMP origIMP = JSQReplaceMethodWithBlock(klass, presentSheetSEL, ^(id self, CGRect rect) {
-            // Before calling the original implementation, we swizzle the presentation logic on UIViewController
-            installWorkaround();
-            // UIKit later presents the sheet on [view.window rootViewController];
-            // See https://github.com/WebKit/webkit/blob/1aceb9ed7a42d0a5ed11558c72bcd57068b642e7/Source/WebKit2/UIProcess/ios/WKActionSheet.mm#L102
-            // Our workaround forwards this to the topmost presentedViewController instead.
-            ((void (*)(id, SEL, CGRect))origIMP)(self, presentSheetSEL, rect);
-            // Cleaning up again - this workaround would swallow bugs if we let it be there.
-            removeWorkaround();
-        });
-    };
-
-    // _UIRotatingAlertController
-    Class alertClass = NSClassFromString([NSString stringWithFormat:@"%@%@%@", @"_U", @"IRotat", @"ingAlertController"]);
-    if (alertClass) {
-        swizzleOnClass(alertClass);
-    }
-
-    // WKActionSheet
-    Class actionSheetClass = NSClassFromString([NSString stringWithFormat:@"%@%@%@", @"W", @"KActio", @"nSheet"]);
-    if (actionSheetClass) {
-        swizzleOnClass(actionSheetClass);
-    }
-}
-
-
 @interface JSQMessagesViewController () <JSQMessagesInputToolbarDelegate>
-
 @property (weak, nonatomic) IBOutlet JSQMessagesCollectionView *collectionView;
 @property (strong, nonatomic) IBOutlet JSQMessagesInputToolbar *inputToolbar;
-
 @property (nonatomic) NSLayoutConstraint *toolbarHeightConstraint;
-
 @property (strong, nonatomic) NSIndexPath *selectedIndexPathForMenu;
 
 @end
 
 
 @implementation JSQMessagesViewController
-
-#pragma mark - Class methods
 
 + (UINib *)nib
 {
@@ -136,63 +36,39 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
                                           bundle:[NSBundle bundleForClass:[JSQMessagesViewController class]]];
 }
 
-+ (void)initialize {
-    [super initialize];
-    if (self == [JSQMessagesViewController self]) {
-        JSQInstallWorkaroundForSheetPresentationIssue26295020();
-    }
-}
-
-#pragma mark - Initialization
++ (void)initialize { [super initialize]; }
 
 - (void)jsq_configureMessagesViewController
 {
     self.view.backgroundColor = [UIColor whiteColor];
-
     self.toolbarHeightConstraint.constant = self.inputToolbar.preferredDefaultHeight;
-
     self.collectionView.dataSource = self;
     self.collectionView.delegate = self;
-
     self.inputToolbar.delegate = self;
     self.inputToolbar.contentView.textView.placeHolder = [NSBundle jsq_localizedStringForKey:@"new_message"];
     self.inputToolbar.contentView.textView.accessibilityLabel = [NSBundle jsq_localizedStringForKey:@"new_message"];
     self.inputToolbar.contentView.textView.delegate = self;
     self.inputToolbar.contentView.textView.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
     [self.inputToolbar removeFromSuperview];
-
     self.automaticallyScrollsToMostRecentMessage = YES;
-
     self.outgoingCellIdentifier = [JSQMessagesCollectionViewCellOutgoing cellReuseIdentifier];
     self.outgoingMediaCellIdentifier = [JSQMessagesCollectionViewCellOutgoing mediaCellReuseIdentifier];
-
     self.incomingCellIdentifier = [JSQMessagesCollectionViewCellIncoming cellReuseIdentifier];
     self.incomingMediaCellIdentifier = [JSQMessagesCollectionViewCellIncoming mediaCellReuseIdentifier];
-
-    // NOTE: let this behavior be opt-in for now
-    // [JSQMessagesCollectionViewCell registerMenuAction:@selector(delete:)];
-
     self.showTypingIndicator = NO;
-
     self.showLoadEarlierMessagesHeader = NO;
-
     self.additionalContentInset = UIEdgeInsetsZero;
-
     [self jsq_updateCollectionViewInsets];
 }
 
 - (void)dealloc
 {
     [self jsq_registerForNotifications:NO];
-
     _collectionView.dataSource = nil;
     _collectionView.delegate = nil;
-
     _inputToolbar.contentView.textView.delegate = nil;
     _inputToolbar.delegate = nil;
 }
-
-#pragma mark - Setters
 
 - (void)setShowTypingIndicator:(BOOL)showTypingIndicator
 {
@@ -222,8 +98,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     _additionalContentInset = additionalContentInset;
     [self jsq_updateCollectionViewInsets];
 }
-
-#pragma mark - View lifecycle
 
 - (void)viewDidLoad
 {
@@ -289,16 +163,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     [self.collectionView.collectionViewLayout invalidateLayoutWithContext:[JSQMessagesCollectionViewFlowLayoutInvalidationContext context]];
 }
 
-- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation
-{
-    [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
-    if (self.showTypingIndicator) {
-        self.showTypingIndicator = NO;
-        self.showTypingIndicator = YES;
-        [self.collectionView reloadData];
-    }
-}
-
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
     [self jsq_resetLayoutAndCaches];
@@ -315,8 +179,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     context.invalidateFlowLayoutMessagesCache = YES;
     [self.collectionView.collectionViewLayout invalidateLayoutWithContext:context];
 }
-
-#pragma mark - Messages view controller
 
 - (void)didPressSendButton:(UIButton *)button
            withMessageText:(NSString *)text
@@ -484,8 +346,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     return nil;
 }
 
-#pragma mark - Collection view data source
-
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
 {
     return 0;
@@ -620,6 +480,16 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     return CGSizeMake([collectionViewLayout itemWidth], kJSQMessagesTypingIndicatorFooterViewHeight);
 }
 
+- (CGSize)collectionView2:(UICollectionView *)collectionView
+                  layout:(X509MessagesCollectionViewFlowLayout *)collectionViewLayout referenceSizeForFooterInSection:(NSInteger)section
+{
+    if (!self.showTypingIndicator) {
+        return CGSizeZero;
+    }
+
+    return CGSizeMake([collectionViewLayout itemWidth], kJSQMessagesTypingIndicatorFooterViewHeight);
+}
+
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(JSQMessagesCollectionViewFlowLayout *)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section
 {
@@ -630,7 +500,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     return CGSizeMake([collectionViewLayout itemWidth], kJSQMessagesLoadEarlierHeaderViewHeight);
 }
 
-#pragma mark - Collection view delegate
 
 - (BOOL)collectionView:(JSQMessagesCollectionView *)collectionView shouldShowMenuForItemAtIndexPath:(NSIndexPath *)indexPath
 {
@@ -696,8 +565,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     }
 }
 
-#pragma mark - Collection view delegate flow layout
-
 - (CGSize)collectionView:(JSQMessagesCollectionView *)collectionView
                   layout:(JSQMessagesCollectionViewFlowLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
@@ -731,8 +598,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
 - (void)collectionView:(JSQMessagesCollectionView *)collectionView
  didTapCellAtIndexPath:(NSIndexPath *)indexPath
          touchLocation:(CGPoint)touchLocation { }
-
-#pragma mark - Input toolbar delegate
 
 - (void)messagesInputToolbar:(JSQMessagesInputToolbar *)toolbar didPressLeftBarButton:(UIButton *)sender
 {
@@ -771,8 +636,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     return [self.inputToolbar.contentView.textView.text jsq_stringByTrimingWhitespace];
 }
 
-#pragma mark - Input
-
 - (UIView *)inputAccessoryView
 {
     return self.inputToolbar;
@@ -782,8 +645,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
 {
     return YES;
 }
-
-#pragma mark - Text view delegate
 
 - (void)textViewDidBeginEditing:(UITextView *)textView
 {
@@ -813,8 +674,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
 
     [textView resignFirstResponder];
 }
-
-#pragma mark - Notifications
 
 - (void)didReceiveMenuWillShowNotification:(NSNotification *)notification
 {
@@ -860,8 +719,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     [self.collectionView setNeedsLayout];
 }
 
-#pragma mark - Collection view utilities
-
 - (void)jsq_updateCollectionViewInsets
 {
     const CGFloat top = self.additionalContentInset.top;
@@ -882,8 +739,6 @@ static void JSQInstallWorkaroundForSheetPresentationIssue26295020(void) {
     //  it is only our menu if `selectedIndexPathForMenu` is not `nil`
     return self.selectedIndexPathForMenu != nil && [[UIMenuController sharedMenuController] isMenuVisible];
 }
-
-#pragma mark - Utilities
 
 - (void)jsq_registerForNotifications:(BOOL)registerForNotifications
 {
